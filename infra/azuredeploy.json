@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "17483079743283858941"
+      "templateHash": "6230462803125103069"
     }
   },
   "parameters": {
@@ -110,9 +110,17 @@
       "metadata": {
         "description": "Chat model capacity (1K TPM per unit)"
       }
+    },
+    "seedData": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Seed sample data and create knowledge base during deployment"
+      }
     }
   },
   "variables": {
+    "$fxv#0": "#!/bin/bash\nset -e\n\necho \"⏳ Waiting 60 seconds for RBAC role propagation...\"\nsleep 60\n\necho \"📦 Installing Python dependencies...\"\npip install -q azure-search-documents==11.7.0b2 azure-identity requests\n\necho \"🚀 Running data seed script...\"\npython3 <<'PYTHON_SCRIPT'\nimport os, json, requests\nfrom azure.identity import AzureCliCredential\nfrom azure.search.documents.indexes import SearchIndexClient\nfrom azure.search.documents import SearchIndexingBufferedSender\nfrom azure.search.documents.indexes.models import (\n    SearchIndex, SearchField, VectorSearch, VectorSearchProfile,\n    HnswAlgorithmConfiguration, AzureOpenAIVectorizer,\n    AzureOpenAIVectorizerParameters, SemanticSearch,\n    SemanticConfiguration, SemanticPrioritizedFields, SemanticField,\n    SearchIndexKnowledgeSource, SearchIndexKnowledgeSourceParameters,\n    SearchIndexFieldReference, KnowledgeBase, KnowledgeBaseAzureOpenAIModel,\n    KnowledgeSourceReference, KnowledgeRetrievalOutputMode,\n)\n\ncredential = AzureCliCredential()\n\nSEARCH_ENDPOINT = os.environ[\"SEARCH_ENDPOINT\"]\nAOAI_ENDPOINT = os.environ[\"AOAI_ENDPOINT\"]\nEMBEDDING_MODEL = os.environ[\"EMBEDDING_MODEL\"]\nEMBEDDING_DEPLOYMENT = os.environ[\"EMBEDDING_DEPLOYMENT\"]\nGPT_MODEL = os.environ[\"GPT_MODEL\"]\nGPT_DEPLOYMENT = os.environ[\"GPT_DEPLOYMENT\"]\n\nINDEX_NAME = \"earth-at-night\"\nKNOWLEDGE_SOURCE_NAME = \"earth-knowledge-source\"\nKNOWLEDGE_BASE_NAME = \"earth-knowledge-base\"\n\n# ── Step 1: Create search index ──────────────────────────────────────────────\nindex_client = SearchIndexClient(endpoint=SEARCH_ENDPOINT, credential=credential)\n\nindex = SearchIndex(\n    name=INDEX_NAME,\n    fields=[\n        SearchField(name=\"id\", type=\"Edm.String\", key=True, filterable=True),\n        SearchField(name=\"page_chunk\", type=\"Edm.String\"),\n        SearchField(\n            name=\"page_embedding_text_3_large\",\n            type=\"Collection(Edm.Single)\",\n            stored=False,\n            vector_search_dimensions=3072,\n            vector_search_profile_name=\"hnsw_text_3_large\",\n        ),\n        SearchField(name=\"page_number\", type=\"Edm.Int32\", filterable=True),\n    ],\n    vector_search=VectorSearch(\n        profiles=[VectorSearchProfile(\n            name=\"hnsw_text_3_large\",\n            algorithm_configuration_name=\"alg\",\n            vectorizer_name=\"azure_openai_text_3_large\",\n        )],\n        algorithms=[HnswAlgorithmConfiguration(name=\"alg\")],\n        vectorizers=[AzureOpenAIVectorizer(\n            vectorizer_name=\"azure_openai_text_3_large\",\n            parameters=AzureOpenAIVectorizerParameters(\n                resource_url=AOAI_ENDPOINT,\n                deployment_name=EMBEDDING_DEPLOYMENT,\n                model_name=EMBEDDING_MODEL,\n            ),\n        )],\n    ),\n    semantic_search=SemanticSearch(\n        default_configuration_name=\"semantic_config\",\n        configurations=[SemanticConfiguration(\n            name=\"semantic_config\",\n            prioritized_fields=SemanticPrioritizedFields(\n                content_fields=[SemanticField(field_name=\"page_chunk\")]\n            ),\n        )],\n    ),\n)\nindex_client.create_or_update_index(index)\nprint(f\"✅ Index '{INDEX_NAME}' created\")\n\n# ── Step 2: Upload sample documents ──────────────────────────────────────────\nDATA_URL = \"https://raw.githubusercontent.com/Azure-Samples/azure-search-sample-data/main/nasa-e-book/earth-at-night-json/documents.json\"\ndocuments = requests.get(DATA_URL).json()\n\nwith SearchIndexingBufferedSender(\n    endpoint=SEARCH_ENDPOINT, index_name=INDEX_NAME, credential=credential\n) as sender:\n    sender.upload_documents(documents=documents)\nprint(f\"✅ {len(documents)} documents uploaded to '{INDEX_NAME}'\")\n\n# ── Step 3: Create knowledge source ──────────────────────────────────────────\nknowledge_source = SearchIndexKnowledgeSource(\n    name=KNOWLEDGE_SOURCE_NAME,\n    description=\"NASA Earth at Night data\",\n    search_index_parameters=SearchIndexKnowledgeSourceParameters(\n        search_index_name=INDEX_NAME,\n        source_data_fields=[\n            SearchIndexFieldReference(name=\"id\"),\n            SearchIndexFieldReference(name=\"page_number\"),\n        ],\n    ),\n)\nindex_client.create_or_update_knowledge_source(knowledge_source=knowledge_source)\nprint(f\"✅ Knowledge source '{KNOWLEDGE_SOURCE_NAME}' created\")\n\n# ── Step 4: Create knowledge base ────────────────────────────────────────────\nknowledge_base = KnowledgeBase(\n    name=KNOWLEDGE_BASE_NAME,\n    models=[KnowledgeBaseAzureOpenAIModel(\n        azure_open_ai_parameters=AzureOpenAIVectorizerParameters(\n            resource_url=AOAI_ENDPOINT,\n            deployment_name=GPT_DEPLOYMENT,\n            model_name=GPT_MODEL,\n        )\n    )],\n    knowledge_sources=[KnowledgeSourceReference(name=KNOWLEDGE_SOURCE_NAME)],\n    output_mode=KnowledgeRetrievalOutputMode.ANSWER_SYNTHESIS,\n    answer_instructions=\"Provide a concise, informative answer grounded in the retrieved documents.\",\n)\nindex_client.create_or_update_knowledge_base(knowledge_base)\nprint(f\"✅ Knowledge base '{KNOWLEDGE_BASE_NAME}' created\")\n\nprint(f\"\\n🎉 Data seeding complete!\")\nprint(f\"MCP endpoint: {SEARCH_ENDPOINT}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp\")\nPYTHON_SCRIPT\n",
     "uniqueSuffix": "[uniqueString(resourceGroup().id)]",
     "names": {
       "search": "[format('{0}-search-{1}', parameters('resourcePrefix'), variables('uniqueSuffix'))]",
@@ -372,6 +380,100 @@
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').aiServices)]"
       ]
+    },
+    {
+      "condition": "[parameters('seedData')]",
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix'))]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "condition": "[parameters('seedData')]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Search/searchServices/{0}', variables('names').search)]",
+      "name": "[guid(resourceGroup().id, variables('names').search, 'seed', variables('roles').searchServiceContributor)]",
+      "properties": {
+        "principalId": "[if(parameters('seedData'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix'))), '2023-01-31').principalId, '')]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roles').searchServiceContributor)]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('seedData')]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Search/searchServices/{0}', variables('names').search)]",
+      "name": "[guid(resourceGroup().id, variables('names').search, 'seed', variables('roles').searchIndexDataContributor)]",
+      "properties": {
+        "principalId": "[if(parameters('seedData'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix'))), '2023-01-31').principalId, '')]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roles').searchIndexDataContributor)]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('seedData')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[format('{0}-seed-data', parameters('resourcePrefix'))]",
+      "location": "[parameters('location')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix'))))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.65.0",
+        "retentionInterval": "PT1H",
+        "timeout": "PT15M",
+        "scriptContent": "[variables('$fxv#0')]",
+        "environmentVariables": [
+          {
+            "name": "SEARCH_ENDPOINT",
+            "value": "[format('https://{0}.search.windows.net', variables('names').search)]"
+          },
+          {
+            "name": "AOAI_ENDPOINT",
+            "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('names').openAi), '2023-10-01-preview').endpoint]"
+          },
+          {
+            "name": "EMBEDDING_MODEL",
+            "value": "[parameters('embeddingModelName')]"
+          },
+          {
+            "name": "EMBEDDING_DEPLOYMENT",
+            "value": "[variables('names').embeddingDeployment]"
+          },
+          {
+            "name": "GPT_MODEL",
+            "value": "[parameters('chatModelName')]"
+          },
+          {
+            "name": "GPT_DEPLOYMENT",
+            "value": "[variables('names').chatDeployment]"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').openAi, variables('names').chatDeployment)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').openAi, variables('names').embeddingDeployment)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').openAi)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-seed-{1}', parameters('resourcePrefix'), variables('uniqueSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, variables('names').search, 'seed', variables('roles').searchServiceContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, variables('names').search, 'seed', variables('roles').searchIndexDataContributor))]"
+      ]
     }
   ],
   "outputs": {
@@ -451,6 +553,20 @@
         "description": "Resource location"
       },
       "value": "[parameters('location')]"
+    },
+    "knowledgeBaseName": {
+      "type": "string",
+      "metadata": {
+        "description": "Knowledge base name (for MCP endpoint)"
+      },
+      "value": "earth-knowledge-base"
+    },
+    "mcpEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "MCP endpoint URL (connect agents to the knowledge base)"
+      },
+      "value": "[format('https://{0}.search.windows.net/knowledgebases/earth-knowledge-base/mcp', variables('names').search)]"
     }
   }
 }

@@ -1,0 +1,23 @@
+{
+  "name": "IQ Series - Foundry IQ",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/azure-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "ms-toolsai.jupyter",
+        "ms-python.python"
+      ],
+      "settings": {
+        "chat.mcp.discovery.enabled": true,
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      }
+    }
+  },
+  "postCreateCommand": "pip install -q azure-search-documents==11.7.0b2 azure-ai-projects azure-identity python-dotenv requests",
+  "remoteUser": "vscode"
+}

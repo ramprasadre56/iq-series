@@ -36,11 +36,23 @@ Episode folders also include Jupyter notebook cookbooks with hands-on, step-by-s
 
 ## 🚀 Get Started
 
-### Deploy to Azure
+### 1. Deploy to Azure
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://aka.ms/iq-series/deploytoazure)
 
-Follow the [Episode 1 README](./1-Foundry-IQ-Unlocking-Knowledge-for-Agents/README.md) for step-by-step deployment instructions and to run your first cookbook.
+Deploy all required Azure resources with one click — this creates AI Search, Azure OpenAI, a Foundry project, and seeds sample data with a ready-to-use knowledge base. Follow the [Episode 1 README](./1-Foundry-IQ-Unlocking-Knowledge-for-Agents/README.md) for step-by-step deployment instructions.
+
+### 2. Learn with Copilot
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://aka.ms/iq-series/learnwithcopilot)
+
+Launch a Codespace and start exploring Foundry IQ with GitHub Copilot. Copilot connects to your deployed knowledge base via MCP — ask it questions about your data and get grounded, cited answers.
+
+1. Click the button above to open a Codespace
+2. When prompted, paste your **Azure AI Search endpoint** from the deployment outputs
+3. Open any cookbook notebook and use Copilot to help you learn and experiment
+
+You can also use this locally — clone the repo and open in VS Code. The MCP config loads automatically. For Copilot CLI, add the server with `/mcp add` or edit `~/.copilot/mcp-config.json`.
 
 ## 🙏 Get Involved
 

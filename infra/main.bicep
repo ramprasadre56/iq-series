@@ -315,6 +315,75 @@ resource userRole_aiServicesContributor 'Microsoft.Authorization/roleAssignments
 }
 
 // ===============================================
+// DATA SEEDING (Deployment Script)
+// Creates search index, uploads sample data,
+// knowledge source, and knowledge base so the
+// MCP endpoint is ready to use immediately
+// ===============================================
+
+@description('Seed sample data and create knowledge base during deployment')
+param seedData bool = true
+
+resource seedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (seedData) {
+  name: '${resourcePrefix}-seed-${uniqueSuffix}'
+  location: location
+}
+
+// Grant the seed identity Search Service Contributor on the search service
+resource seedRole_searchContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (seedData) {
+  name: guid(resourceGroup().id, searchService.name, 'seed', roles.searchServiceContributor)
+  scope: searchService
+  properties: {
+    principalId: seedData ? seedIdentity.properties.principalId : ''
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.searchServiceContributor)
+  }
+}
+
+// Grant the seed identity Search Index Data Contributor on the search service
+resource seedRole_searchIndexContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (seedData) {
+  name: guid(resourceGroup().id, searchService.name, 'seed', roles.searchIndexDataContributor)
+  scope: searchService
+  properties: {
+    principalId: seedData ? seedIdentity.properties.principalId : ''
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.searchIndexDataContributor)
+  }
+}
+
+resource seedDataScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (seedData) {
+  name: '${resourcePrefix}-seed-data'
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${seedIdentity.id}': {}
+    }
+  }
+  properties: {
+    azCliVersion: '2.65.0'
+    retentionInterval: 'PT1H'
+    timeout: 'PT15M'
+    scriptContent: loadTextContent('scripts/seed-data.sh')
+    environmentVariables: [
+      { name: 'SEARCH_ENDPOINT', value: 'https://${searchService.name}.search.windows.net' }
+      { name: 'AOAI_ENDPOINT', value: openAiService.properties.endpoint }
+      { name: 'EMBEDDING_MODEL', value: embeddingModelName }
+      { name: 'EMBEDDING_DEPLOYMENT', value: names.embeddingDeployment }
+      { name: 'GPT_MODEL', value: chatModelName }
+      { name: 'GPT_DEPLOYMENT', value: names.chatDeployment }
+    ]
+  }
+  dependsOn: [
+    seedRole_searchContributor
+    seedRole_searchIndexContributor
+    embeddingDeployment
+    chatDeployment
+  ]
+}
+
+// ===============================================
 // OUTPUTS
 // ===============================================
 
@@ -350,3 +419,9 @@ output searchConnectionName string = searchConnection.name
 
 @description('Resource location')
 output resourceLocation string = location
+
+@description('Knowledge base name (for MCP endpoint)')
+output knowledgeBaseName string = 'earth-knowledge-base'
+
+@description('MCP endpoint URL (connect agents to the knowledge base)')
+output mcpEndpoint string = 'https://${searchService.name}.search.windows.net/knowledgebases/earth-knowledge-base/mcp'
