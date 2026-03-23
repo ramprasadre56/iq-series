@@ -58,6 +58,13 @@ az ad signed-in-user show --query id -o tsv
 
 Once deployment completes, copy the **Azure AI Search endpoint** and **API key** from the deployment **Outputs** tab. You'll need them in the next step.
 
+> **⚠️ Troubleshooting: Deployment script failed?**
+>
+> Some Azure tenants enforce policies that block key-based access on storage accounts. This can cause the **data seeding script** to fail while all other resources deploy successfully. If this happens, your Azure resources (AI Search, OpenAI, Foundry project, etc.) are fully deployed — only the sample data and knowledge base setup is missing. You can seed the data manually using either of these alternatives:
+>
+> 1. **Run the Episode 1 cookbook**: Open the [Episode 1 cookbook](./1-Foundry-IQ-Unlocking-Knowledge-for-Agents/cookbook/) and run it end-to-end — it indexes the same NASA "Earth at Night" sample data to your AI Search and creates the knowledge source and knowledge base.
+> 2. **Seed via Foundry IQ UI**: Create an index in AI Search manually using the [NASA Earth at Night dataset](https://raw.githubusercontent.com/Azure-Samples/azure-search-sample-data/main/nasa-e-book/earth-at-night-json/documents.json), then create a knowledge source and knowledge base pointing to it through the Foundry IQ portal.
+
 ### 2. Learn with Copilot
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://aka.ms/iq-series/learnwithcopilot)
