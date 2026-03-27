@@ -1,0 +1,16 @@
+{
+  "name": "iq-scripts",
+  "private": true,
+  "scripts": {
+    "register": "ts-node register-agent.ts"
+  },
+  "dependencies": {
+    "@azure/ai-projects": "^1.0.0",
+    "@azure/identity": "^4.4.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  }
+}
