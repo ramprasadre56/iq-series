@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "skills": {
+    "appinsights-instrumentation": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "f0457175ad82e0d97598959a68da13436e29ad8903697668661c67696d022840"
+    },
+    "azure-ai": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "49bab0eee3a6f371d1dc5c6b91c80d19a1b18f9428e0dc5c0c396a2a74f4d5ca"
+    },
+    "azure-aigateway": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "98c1835f0a7e9d5bf79c69a863b011ebfbb2af88df6992402902efc682066d4f"
+    },
+    "azure-cloud-migrate": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "9012026787646c6efb035dd8c444fb2e3fbf7040166cb3dde65d50977d88c27a"
+    },
+    "azure-compliance": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "4ddb25b81d492c3c49b78dd607c6df8a9738c805dd8e10cbc03558508bd6a513"
+    },
+    "azure-compute": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "9c06b4093d7d44ce485a1063268ba35e017575ba5f437632b661d7e1fb70de9c"
+    },
+    "azure-cost-optimization": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "d7448788c3af865a3fb52c5732e04a3c9e44076695bec1405e2f6796e78ee136"
+    },
+    "azure-deploy": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "a319bbb413cd4a58a140b82e25f7d938db8c4c9df97262c6150c66a44b7ba605"
+    },
+    "azure-diagnostics": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "57ee765c872f487c787282b4a465eaf439558354c59c5648f2423c50c5bdda25"
+    },
+    "azure-enterprise-infra-planner": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "a9a37f7cf465bd779cd788a038bc0ce27a01c99773ed513d91a0b6743742a571"
+    },
+    "azure-hosted-copilot-sdk": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "2bba00864d6b5ef757048929a6e29e92ba8765abbb6b9387467ac86773766d84"
+    },
+    "azure-kubernetes": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "ffbbef8185d9d9243b40a89b697d1179340afc86dcc1d26ccad47c9ff3d15979"
+    },
+    "azure-kusto": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "2f8131550f9ad49ed5034dba89039bda8e3fc4be5ffd5150ed10ceaa09dd6c7b"
+    },
+    "azure-messaging": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "f31dcd2a36af035b7a19e0947f11966054e0943375ba4086b2b795c9fb577ee9"
+    },
+    "azure-prepare": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "daf70fef06e339be3872778776f64dfd943aef6db42dec61486386f29b9849c4"
+    },
+    "azure-quotas": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "df082e5b14e78461a641af9f8373b45da9c7b117bbc592cffd54d2a0712838cd"
+    },
+    "azure-rbac": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "4e36350ab69a0e8fe6ef2f83427310136b99c2ffc424208fad4d5f32725daeec"
+    },
+    "azure-resource-lookup": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "626726ff2d792df6c446291713f72708159f782e6a361b632f341beab876e185"
+    },
+    "azure-resource-visualizer": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "ce68b88c52dd7787f177778cc872d943cbb7ed225bfefa983310e87017529b06"
+    },
+    "azure-storage": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "45a60e2174320f6384e88d5a9cb41a8aeae1b69d877f8d97f764232a5d879e6c"
+    },
+    "azure-upgrade": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "652eaf82f45077b6788ac175bb9371d1e7316894811399e4351c22f245982640"
+    },
+    "azure-validate": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "27974199ab46ac857978932230bba75bcfa74a9bbeb77d29784b6629b08e2661"
+    },
+    "entra-app-registration": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "4dfa36ce0fb47217d1d375757d5bac26936564799f9fda0c855a9077b91f65eb"
+    },
+    "microsoft-foundry": {
+      "source": "microsoft/azure-skills",
+      "sourceType": "github",
+      "computedHash": "a42e47ca32ee8d25b5830620e9d94c398944466dd9cc29b74f9b8f8f66f985de"
+    }
+  }
+}
