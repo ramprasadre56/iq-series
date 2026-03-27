@@ -1,0 +1,90 @@
+name: Deploy SharePoint Foundry Agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent-service/**'
+      - 'scripts/register-agent.ts'
+      - 'infra/agent.bicep'
+  workflow_dispatch:
+    inputs:
+      reasoning_model:
+        description: 'Reasoning model (e.g. azure/gpt-4o, google/gemini-2.0-flash)'
+        required: false
+        default: 'azure/gpt-4o'
+
+env:
+  ACR_NAME: ${{ secrets.ACR_NAME }}
+  RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+  AZURE_AI_ENDPOINT: ${{ secrets.AZURE_AI_ENDPOINT }}
+  FOUNDRY_PROJECT_NAME: ${{ secrets.FOUNDRY_PROJECT_NAME }}
+  AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
+  AZURE_SEARCH_INDEX_NAME: ${{ secrets.AZURE_SEARCH_INDEX_NAME }}
+  REASONING_MODEL: ${{ github.event.inputs.reasoning_model || 'azure/gpt-4o' }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run unit tests
+        working-directory: agent-service
+        run: |
+          npm ci
+          npm test -- --no-coverage
+
+      - name: Build TypeScript
+        working-directory: agent-service
+        run: npm run build
+
+      - name: Build & push Docker image
+        run: |
+          IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
+          az acr build \
+            --registry $ACR_NAME \
+            --image sharepoint-foundry-agent:$IMAGE_TAG \
+            --image sharepoint-foundry-agent:latest \
+            agent-service/
+
+      - name: Deploy ACA (Bicep)
+        run: |
+          IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
+          az deployment group create \
+            --resource-group $RESOURCE_GROUP \
+            --template-file infra/agent.bicep \
+            --parameters \
+              acrLoginServer="${ACR_NAME}.azurecr.io" \
+              imageTag="$IMAGE_TAG" \
+              azureAiEndpoint="$AZURE_AI_ENDPOINT" \
+              foundryProjectName="$FOUNDRY_PROJECT_NAME" \
+              searchEndpoint="$AZURE_SEARCH_ENDPOINT" \
+              searchIndexName="$AZURE_SEARCH_INDEX_NAME" \
+              reasoningModel="$REASONING_MODEL"
+
+      - name: Get ACA endpoint
+        id: aca
+        run: |
+          ACA_ENDPOINT=$(az deployment group show \
+            --resource-group $RESOURCE_GROUP \
+            --name agent \
+            --query properties.outputs.acaEndpoint.value -o tsv)
+          echo "endpoint=$ACA_ENDPOINT" >> $GITHUB_OUTPUT
+
+      - name: Register Foundry Agent
+        working-directory: scripts
+        run: |
+          npm ci
+          ACA_ENDPOINT=${{ steps.aca.outputs.endpoint }} npx ts-node register-agent.ts
