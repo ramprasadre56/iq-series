@@ -41,6 +41,32 @@ var containerAppName = '${resourcePrefix}-agent-${uniqueSuffix}'
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 
 // -----------------------------------------------
+// User Assigned Managed Identity
+// Created before the Container App so ACR pull RBAC
+// can be assigned before image pull begins (avoids
+// race condition with SystemAssigned identity)
+// -----------------------------------------------
+
+resource acaIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${resourcePrefix}-aca-id-${uniqueSuffix}'
+  location: location
+}
+
+resource acrResource 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: split(acrLoginServer, '.')[0]
+}
+
+resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, containerAppName, acrPullRoleId)
+  scope: acrResource
+  properties: {
+    principalId: acaIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+  }
+}
+
+// -----------------------------------------------
 // Container Apps Environment
 // -----------------------------------------------
 
@@ -54,13 +80,18 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 
 // -----------------------------------------------
 // Container App
+// depends on acrPullRole so RBAC is in place
+// before the first image pull attempt
 // -----------------------------------------------
 
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${acaIdentity.id}': {}
+    }
   }
   properties: {
     managedEnvironmentId: acaEnvironment.id
@@ -73,7 +104,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: acrLoginServer
-          identity: 'system'
+          identity: acaIdentity.id
         }
       ]
       secrets: [
@@ -109,24 +140,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
   }
-}
-
-// -----------------------------------------------
-// Grant ACA identity ACR pull permission
-// -----------------------------------------------
-
-resource acrResource 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
-  name: split(acrLoginServer, '.')[0]
-}
-
-resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, containerApp.name, acrPullRoleId)
-  scope: acrResource
-  properties: {
-    principalId: containerApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
-  }
+  dependsOn: [
+    acrPullRole
+  ]
 }
 
 // -----------------------------------------------
@@ -134,4 +150,4 @@ resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 // -----------------------------------------------
 
 output acaEndpoint string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
-output acaManagedIdentityPrincipalId string = containerApp.identity.principalId
+output acaManagedIdentityPrincipalId string = acaIdentity.properties.principalId
