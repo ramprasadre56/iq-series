@@ -260,7 +260,7 @@ resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-1
     raiPolicyName: 'Microsoft.Default'
   }
   sku: {
-    name: 'GlobalStandard'
+    name: 'Standard'
     capacity: chatModelCapacity
   }
   dependsOn: [
@@ -303,7 +303,7 @@ resource aiServicesChatDeployment 'Microsoft.CognitiveServices/accounts/deployme
     raiPolicyName: 'Microsoft.Default'
   }
   sku: {
-    name: 'GlobalStandard'
+    name: 'Standard'
     capacity: chatModelCapacity
   }
   dependsOn: [

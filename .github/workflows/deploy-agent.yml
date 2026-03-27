@@ -53,15 +53,18 @@ jobs:
       - name: Build & push Docker image
         run: |
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
-          az acr build \
-            --registry $ACR_NAME \
-            --image sharepoint-foundry-agent:$IMAGE_TAG \
-            --image sharepoint-foundry-agent:latest \
-            agent-service/
+          ACR_SERVER="${ACR_NAME}.azurecr.io"
+          az acr login --name $ACR_NAME
+          docker build -t "${ACR_SERVER}/sharepoint-foundry-agent:${IMAGE_TAG}" \
+                       -t "${ACR_SERVER}/sharepoint-foundry-agent:latest" \
+                       agent-service/
+          docker push "${ACR_SERVER}/sharepoint-foundry-agent:${IMAGE_TAG}"
+          docker push "${ACR_SERVER}/sharepoint-foundry-agent:latest"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
       - name: Deploy ACA (Bicep)
         run: |
-          IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
+          IMAGE_TAG=$IMAGE_TAG
           az deployment group create \
             --resource-group $RESOURCE_GROUP \
             --name agent \
