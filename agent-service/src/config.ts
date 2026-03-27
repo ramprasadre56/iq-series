@@ -9,6 +9,7 @@ export interface Config {
     clientSecret?: string;
   };
   reasoningModel: string;
+  apiKey?: string;
   port: number;
 }
 
@@ -30,6 +31,7 @@ export function loadConfig(): Config {
       clientSecret: process.env.AZURE_CLIENT_SECRET,
     },
     reasoningModel: process.env.REASONING_MODEL ?? 'azure/gpt-4o',
+    apiKey: process.env.API_KEY,
     port: (() => {
       const p = parseInt(process.env.PORT ?? '3000', 10);
       if (!Number.isFinite(p)) throw new Error('Invalid PORT value: must be a number');

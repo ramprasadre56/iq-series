@@ -32,6 +32,10 @@ param searchIndexName string
 @description('Reasoning model string (e.g. azure/gpt-4o)')
 param reasoningModel string = 'azure/gpt-4o'
 
+@description('API key for authenticating Foundry Agent tool calls')
+@secure()
+param apiKey string
+
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var containerAppName = '${resourcePrefix}-agent-${uniqueSuffix}'
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
@@ -72,6 +76,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           identity: 'system'
         }
       ]
+      secrets: [
+        {
+          name: 'api-key'
+          value: apiKey
+        }
+      ]
     }
     template: {
       containers: [
@@ -89,6 +99,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_SEARCH_INDEX_NAME', value: searchIndexName }
             { name: 'REASONING_MODEL', value: reasoningModel }
             { name: 'PORT', value: '3000' }
+            { name: 'API_KEY', secretRef: 'api-key' }
           ]
         }
       ]

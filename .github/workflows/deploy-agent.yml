@@ -64,6 +64,7 @@ jobs:
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
           az deployment group create \
             --resource-group $RESOURCE_GROUP \
+            --name agent \
             --template-file infra/agent.bicep \
             --parameters \
               acrLoginServer="${ACR_NAME}.azurecr.io" \
@@ -72,7 +73,8 @@ jobs:
               foundryProjectName="$FOUNDRY_PROJECT_NAME" \
               searchEndpoint="$AZURE_SEARCH_ENDPOINT" \
               searchIndexName="$AZURE_SEARCH_INDEX_NAME" \
-              reasoningModel="$REASONING_MODEL"
+              reasoningModel="$REASONING_MODEL" \
+              apiKey="${{ secrets.API_KEY }}"
 
       - name: Get ACA endpoint
         id: aca

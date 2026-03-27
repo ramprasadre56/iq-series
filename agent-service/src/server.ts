@@ -30,10 +30,35 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', model: config.reasoningModel });
 });
 
+// API key authentication (required for all /tools/* endpoints)
+if (config.apiKey) {
+  app.use('/tools', (req: Request, res: Response, next: NextFunction) => {
+    const key = req.headers['x-api-key'];
+    if (key !== config.apiKey) {
+      return res.status(401).json({ error: 'Unauthorized: invalid or missing API key' });
+    }
+    next();
+  });
+}
+
+function requireFields<T extends Record<string, unknown>>(
+  body: T,
+  fields: (keyof T)[]
+): string | null {
+  for (const field of fields) {
+    if (body[field] === undefined || body[field] === null || body[field] === '') {
+      return `Missing required field: ${String(field)}`;
+    }
+  }
+  return null;
+}
+
 // Tool: searchKnowledge
 app.post('/tools/searchKnowledge', asyncHandler(async (req, res) => {
-  const { query } = req.body as { query: string };
-  const results = await searchKnowledge(query, {
+  const body = req.body as { query: string };
+  const err = requireFields(body, ['query']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  const results = await searchKnowledge(body.query, {
     searchEndpoint: config.azure.searchEndpoint,
     indexName: config.azure.searchIndexName,
   });
@@ -42,71 +67,58 @@ app.post('/tools/searchKnowledge', asyncHandler(async (req, res) => {
 
 // Tool: getListItems
 app.post('/tools/getListItems', asyncHandler(async (req, res) => {
-  const { siteId, listId, filter } = req.body as {
-    siteId: string;
-    listId: string;
-    filter?: string;
-  };
-  const items = await getListItems(graphClient, siteId, listId, filter);
+  const body = req.body as { siteId: string; listId: string; filter?: string };
+  const err = requireFields(body, ['siteId', 'listId']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  const items = await getListItems(graphClient, body.siteId, body.listId, body.filter);
   res.json({ items });
 }));
 
 // Tool: createListItem
 app.post('/tools/createListItem', asyncHandler(async (req, res) => {
-  const { siteId, listId, fields } = req.body as {
-    siteId: string;
-    listId: string;
-    fields: Record<string, unknown>;
-  };
-  const item = await createListItem(graphClient, siteId, listId, fields);
+  const body = req.body as { siteId: string; listId: string; fields: Record<string, unknown> };
+  const err = requireFields(body, ['siteId', 'listId', 'fields']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  const item = await createListItem(graphClient, body.siteId, body.listId, body.fields);
   res.json({ item });
 }));
 
 // Tool: updateListItem
 app.post('/tools/updateListItem', asyncHandler(async (req, res) => {
-  const { siteId, listId, itemId, fields } = req.body as {
-    siteId: string;
-    listId: string;
-    itemId: string;
-    fields: Record<string, unknown>;
-  };
-  const item = await updateListItem(graphClient, siteId, listId, itemId, fields);
+  const body = req.body as { siteId: string; listId: string; itemId: string; fields: Record<string, unknown> };
+  const err = requireFields(body, ['siteId', 'listId', 'itemId', 'fields']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  const item = await updateListItem(graphClient, body.siteId, body.listId, body.itemId, body.fields);
   res.json({ item });
 }));
 
 // Tool: uploadDocument
 app.post('/tools/uploadDocument', asyncHandler(async (req, res) => {
-  const { driveId, fileName, contentBase64, contentType } = req.body as {
-    driveId: string;
-    fileName: string;
-    contentBase64: string;
-    contentType: string;
-  };
-  const content = Buffer.from(contentBase64, 'base64');
-  const result = await uploadDocument(graphClient, driveId, fileName, content, contentType);
+  const body = req.body as { driveId: string; fileName: string; contentBase64: string; contentType: string };
+  const err = requireFields(body, ['driveId', 'fileName', 'contentBase64', 'contentType']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  // Sanitize fileName to prevent path traversal
+  const safeFileName = body.fileName.replace(/[/\\]/g, '_').replace(/\.\./g, '_');
+  const content = Buffer.from(body.contentBase64, 'base64');
+  const result = await uploadDocument(graphClient, body.driveId, safeFileName, content, body.contentType);
   res.json({ result });
 }));
 
 // Tool: createPage
 app.post('/tools/createPage', asyncHandler(async (req, res) => {
-  const { siteId, title, htmlContent } = req.body as {
-    siteId: string;
-    title: string;
-    htmlContent: string;
-  };
-  const result = await createPage(graphClient, siteId, title, htmlContent);
+  const body = req.body as { siteId: string; title: string; htmlContent: string };
+  const err = requireFields(body, ['siteId', 'title', 'htmlContent']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  const result = await createPage(graphClient, body.siteId, body.title, body.htmlContent);
   res.json({ result });
 }));
 
 // Tool: sendNotification
 app.post('/tools/sendNotification', asyncHandler(async (req, res) => {
-  const { senderUserId, toAddresses, subject, body } = req.body as {
-    senderUserId: string;
-    toAddresses: string[];
-    subject: string;
-    body: string;
-  };
-  const result = await sendNotification(graphClient, senderUserId, toAddresses, subject, body);
+  const body = req.body as { senderUserId: string; toAddresses: string[]; subject: string; body: string };
+  const err = requireFields(body, ['senderUserId', 'toAddresses', 'subject', 'body']);
+  if (err) { res.status(400).json({ error: err }); return; }
+  const result = await sendNotification(graphClient, body.senderUserId, body.toAddresses, body.subject, body.body);
   res.json({ result });
 }));
 
